@@ -53,7 +53,7 @@ cp .env.example .env
 # Add your GROQ_API_KEY to .env
 
 go mod tidy
-go run main.go
+make start
 ```
 
 The API will be available at `http://localhost:8080`.

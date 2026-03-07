@@ -48,24 +48,9 @@ func GetPromptComparisonResult(ctx *gin.Context) {
 		return
 	}
 
-	content := BuildMessage(llm, team1, team2)
+	content := buildMessage(team1, team2)
 
-	result, err := llm.GenerateContent(ctx, content)
-	if err != nil {
-		ctx.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": err.Error()},
-		)
-		return
-	}
-
-	if len(result.Choices) == 0 {
-		ctx.JSON(
-			http.StatusNoContent,
-			gin.H{"error": "No result was returned"},
-		)
-		return
-	}
+	result, err := getGroqResponse(llm, ctx, content)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"team1":  team1,
@@ -74,7 +59,29 @@ func GetPromptComparisonResult(ctx *gin.Context) {
 	})
 }
 
-func BuildMessage(llm *openai.LLM, team1 string, team2 string) []llms.MessageContent {
+func getGroqResponse(llm *openai.LLM, ctx *gin.Context, content []llms.MessageContent) (*llms.ContentResponse, error) {
+	result, err := llm.GenerateContent(ctx, content)
+	if err != nil {
+		ctx.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": err.Error()},
+		)
+
+		return nil, err
+	}
+
+	if len(result.Choices) == 0 {
+		ctx.JSON(
+			http.StatusNoContent,
+			gin.H{"error": "No result was returned"},
+		)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func buildMessage(team1 string, team2 string) []llms.MessageContent {
 	agent_description := "You are an expert soccer historian with deep knowledge of clubs, players, coaches, tactics, and competitions worldwide across all eras."
 
 	content := []llms.MessageContent{
@@ -103,13 +110,13 @@ func buildPrompt(team1 string, team2 string) string {
 
 		Provide a structured comparison with the following sections:
 
-		## 1. Squad & Key Players
+		## 1. Elenco & Jogadores Chave
 		List the most important players for each club that year. Include their position, nationality, and what made them exceptional in that season.
 
-		## 2. Season Achievements
+		## 2. Títulos da temporada
 		What titles, competitions, or notable results did each club achieve in that year or campaign? Include domestic league, cups, and continental competitions.
 
-		## 3. Head-to-Head Verdict
+		## 3. Veredito da comparação
 		If these two squads played each other in a neutral venue, who would likely win and why? Consider the tactical matchup, individual quality, and squad depth. Give a predicted score.
 
 		Be specific. Use real names, real statistics, and real historical facts. If you are uncertain about a specific detail, say so rather than inventing it.
