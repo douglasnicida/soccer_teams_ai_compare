@@ -13,6 +13,10 @@ func DBConnection() (*gorm.DB, error) {
 	password := os.Getenv("POSTGRES_PASSWORD")
 	dbname := os.Getenv("POSTGRES_DB")
 
+	if user == "" || password == "" || dbname == "" {
+		return nil, fmt.Errorf("Database environment variables not set")
+	}
+
 	dsn := fmt.Sprintf(
 		"host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC",
 		user,
