@@ -1,21 +1,26 @@
 package database
 
 import (
-	"database/sql"
+	"fmt"
+	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func DBConnection() (*gorm.DB, error) {
-	sqlDB, err := sql.Open("pgx", "mydb_dsn")
-	if err != nil {
-		return nil, err
-	}
+	user := os.Getenv("POSTGRES_USER")
+	password := os.Getenv("POSTGRES_PASSWORD")
+	dbname := os.Getenv("POSTGRES_DB")
 
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{})
+	dsn := fmt.Sprintf(
+		"host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC",
+		user,
+		password,
+		dbname,
+	)
+
+	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 		return nil, err
