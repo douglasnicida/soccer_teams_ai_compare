@@ -7,7 +7,7 @@ import (
 )
 
 // http://localhost:8080/api/ia/?team1=Internacional 2015&team2=Bahia 2015
-func RegisterUserRoutes(router *gin.RouterGroup) {
+func RegisterGroqRoutes(router *gin.RouterGroup) {
 	app := router.Group("ia")
 
 	app.GET("/", groq_service.GetPromptComparisonResult)
