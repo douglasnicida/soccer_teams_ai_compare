@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"gin-go-api/internal/config"
 	"gin-go-api/internal/delivery/http/handler"
@@ -11,6 +12,7 @@ import (
 	"gin-go-api/internal/infrastructure/groq"
 	"gin-go-api/internal/usecase"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -35,6 +37,14 @@ func main() {
 	historyHandler := handler.NewHistoryHandler(historyUsecase)
 
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: false,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	apiGroup := r.Group("")
 	httprouter.RegisterRoutes(apiGroup, comparisonHandler, historyHandler)

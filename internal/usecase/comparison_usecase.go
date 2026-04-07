@@ -13,6 +13,6 @@ func NewComparisonUsecase(llm service.LLMService) *ComparisonUsecase {
 	return &ComparisonUsecase{llm: llm}
 }
 
-func (u *ComparisonUsecase) Execute(query entity.ComparisonQuery) (string, error) {
+func (u *ComparisonUsecase) Execute(query entity.ComparisonQuery) (*service.CompareResult, error) {
 	return u.llm.Compare(query.Team1, query.Team2)
 }

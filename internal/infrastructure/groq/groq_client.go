@@ -3,6 +3,9 @@ package groq
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	"gin-go-api/internal/domain/service"
 
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -24,23 +27,37 @@ func NewGroqClient(apiKey string) *GroqClient {
 	return &GroqClient{llm: llm}
 }
 
-func (c *GroqClient) Compare(team1, team2 string) (string, error) {
+func (c *GroqClient) Compare(team1, team2 string) (*service.CompareResult, error) {
 	messages := buildMessages(team1, team2)
 
 	resp, err := c.llm.GenerateContent(context.Background(), messages)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("no result was returned")
+		return nil, fmt.Errorf("no result was returned")
 	}
 
-	return resp.Choices[0].Content, nil
+	return parseResponse(resp.Choices[0].Content), nil
+}
+
+func parseResponse(text string) *service.CompareResult {
+	const marker = "===SEPARATOR==="
+	idx := strings.Index(text, marker)
+
+	if idx == -1 {
+		return &service.CompareResult{Analysis: text}
+	}
+
+	score := strings.TrimSpace(text[:idx])
+	analysis := strings.TrimSpace(text[idx+len(marker):])
+
+	return &service.CompareResult{Score: score, Analysis: analysis}
 }
 
 func buildMessages(team1, team2 string) []llms.MessageContent {
-	agentDescription := "You are an expert soccer historian with deep knowledge of clubs, players, coaches, tactics, and competitions worldwide across all eras."
+	agentDescription := "You are an expert soccer historian with deep knowledge of clubs, players, coaches, tactics, and competitions worldwide across all eras. You must always answer in Brazilian Portuguese."
 
 	return []llms.MessageContent{
 		{
@@ -59,25 +76,26 @@ func buildMessages(team1, team2 string) []llms.MessageContent {
 }
 
 func buildPrompt(team1, team2 string) string {
-	return fmt.Sprintf(`
-		Compare the following two soccer clubs from their specific historical seasons (if it has the number, if not, take in general):
+	return fmt.Sprintf(`Compare os seguintes clubes de futebol (se houver número no nome, refira-se àquela temporada específica, senão fale do clube em geral):
 
-		- Club A: %s
-		- Club B: %s
+- Clube A: %s
+- Clube B: %s
 
-		Provide a structured comparison with the following sections:
+IMPORTANTE: Na PRIMEIRA LINHA da sua resposta, coloque apenas o placar previsto no formato exato "X - Y" (onde X é o número de gols do Clube A e Y do Clube B). Por exemplo: "2 - 1". Não escreva mais nada nessa linha.
+Após essa linha, escreva a seguinte comparação:
 
-		## 1. Elenco & Jogadores Chave
-		List the most important players for each club that year. Include their position, nationality, and what made them exceptional in that season.
+===SEPARATOR===
 
-		## 2. Títulos da temporada
-		What titles, competitions, or notable results did each club achieve in that year or campaign? Include domestic league, cups, and continental competitions.
+## 1. Elenco & Jogadores Chave
+Liste os jogadores mais importantes de cada time. Inclua posição, nacionalidade e o que os tornou excepcionais naquela temporada.
 
-		## 3. Veredito da comparação
-		If these two squads played each other in a neutral venue, who would likely win and why? Consider the tactical matchup, individual quality, and squad depth. Give a predicted score.
+## 2. Títulos da temporada
+Que títulos, competições ou resultados notáveis cada clube conquistou naquele ano ou campanha?
 
-		Be specific. Use real names, real statistics, and real historical facts. If you are uncertain about a specific detail, say so rather than inventing it.
-		Return the answer in brazilian portuguese`,
+## 3. Veredito da comparação
+Se esses dois elencos jogassem entre si em campo neutro, quem provavelmente venceria e por quê? Considere confronto tático, qualidade individual e profundidade do elenco.
+
+Seja específico. Use nomes reais, estatísticas e fatos históricos reais. Se não tiver certeza sobre algum detalhe, diga em vez de inventar.`,
 		team1, team2,
 	)
 }

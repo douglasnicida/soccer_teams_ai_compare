@@ -13,16 +13,8 @@ func RegisterRoutes(
 ) {
 	api := r.Group("/api")
 	{
-		ia := api.Group("/ia")
-		{
-			ia.GET("/", comparisonHandler.Compare)
-		}
-
-		history := api.Group("/history")
-		{
-			history.GET("/", historyHandler.GetAll)
-		}
-
+		api.GET("/ia", comparisonHandler.Compare)
+		api.GET("/history", historyHandler.GetAll)
 		api.GET("/health-check", healthCheck)
 	}
 }

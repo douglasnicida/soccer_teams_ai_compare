@@ -41,6 +41,7 @@ func (h *ComparisonHandler) Compare(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"team1":  query.Team1,
 		"team2":  query.Team2,
-		"result": result,
+		"score":   result.Score,
+		"result":  result.Analysis,
 	})
 }
