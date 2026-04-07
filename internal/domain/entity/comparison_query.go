@@ -1,4 +1,4 @@
-package groq_model
+package entity
 
 type ComparisonQuery struct {
 	Team1 string `form:"team1" binding:"required"`

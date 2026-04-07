@@ -2,49 +2,45 @@ package main
 
 import (
 	"log"
-	"net/http"
-	"os"
 
-	"github.com/joho/godotenv"
+	"gin-go-api/internal/config"
+	"gin-go-api/internal/delivery/http/handler"
+	httprouter "gin-go-api/internal/delivery/http/router"
+	"gin-go-api/internal/domain/entity"
+	"gin-go-api/internal/infrastructure/database"
+	"gin-go-api/internal/infrastructure/groq"
+	"gin-go-api/internal/usecase"
 
 	"github.com/gin-gonic/gin"
-
-	database "gin-go-api/database"
-	groq_router "gin-go-api/routes/groq"
-	history_router "gin-go-api/routes/history"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	godotenv.Load()
+
+	cfg := config.Load()
+
+	db := database.Connect("localhost", cfg.PostgresPort, cfg.PostgresUser, cfg.PostgresPass, cfg.PostgresDB)
+
+	db.AutoMigrate(&entity.History{})
+
+	groqClient := groq.NewGroqClient(cfg.GroqAPIKey)
+
+	historyRepo := database.NewHistoryRepository(db)
+
+	comparisonUsecase := usecase.NewComparisonUsecase(groqClient)
+	historyUsecase := usecase.NewHistoryUsecase(historyRepo)
+
+	comparisonHandler := handler.NewComparisonHandler(comparisonUsecase)
+	historyHandler := handler.NewHistoryHandler(historyUsecase)
+
+	r := gin.Default()
+
+	apiGroup := r.Group("")
+	httprouter.RegisterRoutes(apiGroup, comparisonHandler, historyHandler)
+
+	log.Printf("Server starting on port %s", cfg.Port)
+	if err := r.Run(":" + cfg.Port); err != nil {
+		log.Fatal(err)
 	}
-
-	db, dbErr := database.DBConnection()
-
-	if dbErr != nil {
-		log.Fatal("Error connecting to database.")
-	}
-
-	log.Println("Database connected successfully!")
-
-	router := gin.Default()
-	app := router.Group("/api")
-
-	groq_router.RegisterGroqRoutes(app)
-	history_router.RegisterHistoryRoutes(app, db)
-
-	app.GET("/health-check", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Health Check Successful",
-		})
-	})
-
-	port := os.Getenv("PORT")
-
-	if port == "" {
-		port = "8080"
-	}
-
-	router.Run(":" + port)
 }
